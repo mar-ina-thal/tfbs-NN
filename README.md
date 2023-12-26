@@ -1,5 +1,5 @@
 # tfbs-NN
-## Constructing a pipeline for the creation of a tfbs dataset and the training of a NN 
+## Constructing a pipeline for the creation of a TFBS dataset and the training of a NN 
 
 This depository is under construction...
 

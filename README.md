@@ -13,4 +13,5 @@ Scripts
   1. conver_fimo.py , script to convert the ouput of fimo in the correct format for <bedtools intersect>
   2. conert_biomart.py, script to convert the mart_exort.txt file derived from Ensmble Regulatory Regions in the correct format for <bedtools intersect>
   3. filter_fimo.py, script that filters fimo results with the Ensemble Regulatory Regions and Chip-seq experiments and creates a dataset of positive and negative sequences for every TF
-  4. run_filter_fimo.sh, bash scripts that runs filter_fimo.py for selected list of TFsS
+  4. run_filter_fimo.sh, bash script that runs filter_fimo.py for selected list of TFs defined in the script
+

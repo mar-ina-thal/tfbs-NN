@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[2]:
+
 
 import convert_fimo
 import convert_biomart
@@ -8,7 +10,7 @@ import os
 import pandas as pd
 from pyfaidx import Fasta
 import argparse
-
+import numpy as np
 
 mapping_table = {
     '1': 'chr1',
@@ -38,7 +40,6 @@ mapping_table = {
     'MT': 'chrM'
 }
 
-# list of tfs to be used
 tfs=['CTCF', 'JUN', 'NR3C1', 'TEAD4','ZNF274',
      'USF2', 'TCF12', 'SRF', 'NRF1', 'MAZ',
      'HES2', 'FOS', 'CEBPA', 'FOXA1', 'USF1',
@@ -46,27 +47,32 @@ tfs=['CTCF', 'JUN', 'NR3C1', 'TEAD4','ZNF274',
      'ZBTB33','SP1', 'CREB1', 'YY1', 'JUND',
      'FOSL2', 'MAX', 'MYC', 'CEBPB', 'REST']
 
-
-# Run this command in order modify the mart_export.txt file downloaded from ensembl
-
-
+# Converting the mart.txt
+#convert_biomart.main(biomart_indir, biomart_outdir)
 
 def main(biomart_indir, tf):   
 
-    print(f"{tf}")
     
-    # Define the necessary directories
+    # Get the path to the user's home directory
     home_dir = os.path.expanduser("~")
-    
-    chipseq_indir = f"/mnt/raid1/thalassini/home/Desktop/ENCODE_CHIP_new/DATA/{tf}/{tf}.peaks"
-    chipseq_outdir = f"/mnt/raid1/thalassini/home/filtered_fimo/{tf}/chipseq_filtered/"    
+    print(home_dir)
+    chipseq_dir = f"/mnt/raid1/thalassini/home/Desktop/ENCODE_CHIP_new/DATA/{tf}/{tf}.peaks"
     fimo_indir = f"/mnt/raid1/thalassini/home/Desktop/ENCODE_CHIP_new/10_RUN/{tf}/run_1"
-    fimo_outdir = f"filtered_fimo/{tf}"    
-    ensemble_outdir = f"/mnt/raid1/thalassini/home/filtered_fimo/{tf}/ensemble_filterted"
+    print(fimo_indir)
+    fimo_outdir = f"filtered_fimo/{tf}"
+
+    # Name of the results directory to be created
+   
+    ensemble_dir = f"filtered_fimo/{tf}/ensemble_filterted"
+    chipseq_out_dir = f"filtered_fimo/{tf}/chipseq_filtered"
     
-    # Create the necessary directories
-    os.makedirs(ensemble_outdir, exist_ok=True)
-    os.makedirs(chipseq_outdir, exist_ok=True)
+    # Join the home directory path with the new directories
+    ensemble_dir = os.path.join(home_dir, ensemble_dir)
+    chipseq_out_dir = os.path.join(home_dir, chipseq_out_dir)
+    fimo_outdir = os.path.join(home_dir, fimo_outdir)
+    
+    os.makedirs(ensemble_dir, exist_ok=True)
+    os.makedirs(chipseq_out_dir, exist_ok=True)
     os.makedirs(fimo_outdir, exist_ok=True)
     
     # Converting the fimo.tsv
@@ -74,40 +80,40 @@ def main(biomart_indir, tf):
     convert_fimo.main(fimo_indir,fimo_outdir)
     print("Fimo converted")
     
-    # Running bedtools intersect with ensemble Regulatory regions
+    # Running bedtools intersect
     print("Running bedtools intersect with ensembl...")
-    intersect1 = f"bedtools intersect -a {fimo_outdir}/fimo_full.bed -b {biomart_indir}/mart.bed > {ensemble_outdir}/ensemlb_filtered_fimo.bed"
+    intersect1 = f"bedtools intersect -a {fimo_outdir}/fimo_full.bed -b {biomart_indir}/mart.bed > {ensemble_dir}/ensemlb_filtered_fimo.bed"
     os.system(intersect1)
 
     # Set new permissions (read, write, and execute for all)
     new_permissions = 0o777
-    os.chmod(f"{ensemble_outdir}/ensemlb_filtered_fimo.bed" , new_permissions)
+    os.chmod(f"{ensemble_dir}/ensemlb_filtered_fimo.bed" , new_permissions)
     print("Ensembl filtered created")
     
-    # Running bedtools intersect with chipseq
     print("Running bedtools intersect with chipseq...")
-    intersect2= f"bedtools intersect -a {ensemble_outdir}/ensemlb_filtered_fimo.bed -b {chipseq_indir} > {chipseq_outdir}/chipseq_filtered.bed"
+    intersect2= f"bedtools intersect -a {ensemble_dir}/ensemlb_filtered_fimo.bed -b {chipseq_dir} > {chipseq_out_dir}/chipseq_filtered.bed"
     os.system(intersect2)
     print("Chipseq filtered created")
     
     
-    ## Create dataframes
+    ## Extract stats
     
     # Create fimo df
-    df = pd.read_csv(f"{fimo_outdir}/fimo_full.bed", sep='\t')
+    fimo_path = fimo_outdir
+    df = pd.read_csv(f"{fimo_path}/fimo_full.bed", sep='\t')
     columns=['Chromosome', 'Start', 'End', 'strand', 'score', 'name']
     df.columns=columns
     
     
     # Create ensembl filtered df
-    filtered_fimo_path = f"{ensemble_outdir}/ensemlb_filtered_fimo.bed"
+    filtered_fimo_path = f"{ensemble_dir}/ensemlb_filtered_fimo.bed"
     filtered_df = pd.read_csv(filtered_fimo_path, sep='\t')
     filtered_df.dropna(inplace=True)
     filtered_df.columns=columns
     
     
     # Create chipseq filterd df
-    chipseq_filtered_fimo_path = f"{chipseq_outdir}/chipseq_filtered.bed"
+    chipseq_filtered_fimo_path = f"{chipseq_out_dir}/chipseq_filtered.bed"
     chipseq_filtered_df = pd.read_csv(chipseq_filtered_fimo_path, sep='\t')
     chipseq_filtered_df.dropna(inplace=True)
     chipseq_filtered_df.columns=columns
@@ -115,9 +121,6 @@ def main(biomart_indir, tf):
 
     
     # Create negative df
-    
-    # We create the negative df by excluding from fimo tfs the rows that exist in filtered_df
-    
     # Merge the DataFrames based on specific columns and keep rows that do not exist in df_filtered
     merged = df.merge(filtered_df, on=['Chromosome', 'Start', 'End', 'strand', 'score', 'name'], how='outer', indicator=True)
     negative_df = merged[merged['_merge'] == 'left_only'].drop('_merge', axis=1)
@@ -128,9 +131,8 @@ def main(biomart_indir, tf):
 
 
 
-    # Calculating statistics of the dataset. Creating the stats.txt
-    content = f'Statistics for {tf} dataset\n' 
-    content += f" The chipseq filtered data is reduced by {chipseq_reduction:.2f}% from initial fimo results\n"
+    # Creating the stats.txt
+    content = f" The chipseq filtered data is reduced by {chipseq_reduction:.2f}% from initial fimo results\n"
     content += f" The promoter/enhancer filtered data is reduced by {filtered_reduction:.2f}% from initial fimo results\n"
     
     stats_dir = os.path.join(home_dir, f"filtered_fimo/{tf}/stats")
@@ -140,24 +142,16 @@ def main(biomart_indir, tf):
 
     print("Content has been written to stats.txt")
     
-    ## Create train set
-    
-    """
-    In this part we need to convert the chromosomal positions into sequences and we do that by extracting the sequences from the GRCh38 reference genome
-    
-    """
-    
+    # Create train set
     # Path to your reference genome FASTA file
     reference_genome_file = '/mnt/raid1/thalassini/home/Downloads/Homo_sapiens.GRCh38.dna.toplevel.fa'
-    #reference_genome_file = '/mnt/raid1/thalassini/home/Downloads/Homo_sapiens.GRCh38.dna_sm.primary_assembly.chrAdded.fa'
- 
+
 
 
     # Load the reference genome using pyfaidx
     fasta = Fasta(reference_genome_file)
-    # We need to update the first 25 fasta.keys in order to match the NCBI format, the rest will not be used
-    
-    print("updating fasta keys...")    
+    # Replace the first 25 keys with mapping_table values
+    print("updating fasta keys...")
     updated_fasta = {}
 
     count = 0
@@ -168,7 +162,6 @@ def main(biomart_indir, tf):
         else:
             updated_fasta[k] = v
             
-            
     # Create true positive test
     print("Creating true positive set...")
     true_positives=[]
@@ -177,7 +170,8 @@ def main(biomart_indir, tf):
         chromosome = row['Chromosome']
         start = row['Start']
         end = row['End']
-        true_positives.append(updated_fasta[chromosome][start-100:end+100].seq)
+        middle=int(np.round(start+(end-start)/2))
+        true_positives.append(updated_fasta[chromosome][middle-100:middle+100].seq)
         
     print("Creating true negative set...")    
     true_negatives=[]
@@ -188,24 +182,23 @@ def main(biomart_indir, tf):
         end = row['End']
         true_negatives.append(updated_fasta[chromosome][start-100:end+100].seq)
         
-    content+=f"We have {len(true_negatives)} negative sequences and {len(true_positives)} positive sequences\n"
-    content+=f"True positives are {len(true_positives)/(len(true_negatives)+len(true_positives))*100}% of the dataset\n"
-    content+=f"True negatives are {len(true_negatives)/(len(true_negatives)+len(true_positives))*100}% of the dataset\n"
+    content+=f"We have {len(true_negatives)} negative sequences and {len(true_positives)} positive sequences"
+    content+=f"True positives are {len(true_positives)/(len(true_negatives)+len(true_positives))*100}% of the dataset"
+    content+=f"True negatives are {len(true_negatives)/(len(true_negatives)+len(true_positives))*100}% of the dataset"
     with open(f'{stats_dir}/stats.txt', 'w') as file:
         file.write(content)
     print("dataset created")
-    
-    
+    """
     ## Checking the length of the sequences
     print("Checking length of sequences...")
     # Check the length of each string in the list
     lengths_pos = [len(item) for item in true_positives]
-    content+=f"Negative sequences Maximum Lenght:{max(lengths_pos)}, Μinimum Length:{min(lengths_pos)}\n"
+    content+=f"Negative sequences Maximum Lenght:{max(lengths_neg)}, Μinimum Length:{min(lengths_neg)}"
     lengths_neg = [len(item) for item in true_negatives]
-    content+=f"Positive sequences Maximum Lenght:{max(lengths_neg)}, Μinimum Length:{min(lengths_neg)}\n"
-    with open('stats.txt', 'w') as file:
+    content+=f"Positive sequences Maximum Lenght:{max(lengths_pos)}, Μinimum Length:{min(lengths_pos)}"
+    with open('stats.txt'http://localhost:8891/notebooks/Downloads/filter_fimo.ipynb#, 'w') as file:
         file.write(content)
-       
+    """    
 
     
     # Combine the two sets in a df
@@ -230,13 +223,20 @@ def main(biomart_indir, tf):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process FIMO data')
+    #parser.add_argument('--fimo_indir', help='Fimo Input directory path')
+    #parser.add_argument('--fimo_outdir', help='Processed Fimo directory path')
     parser.add_argument('--biomart_indir', help='Processed mart.txt directory path')
+    #parser.add_argument('--biomart_outdir', help='Processed mart.txt directory path')
+    #parser.add_argument('--chipseq_dir', help='Path to chipseq bed file')
     parser.add_argument('--tf', help='Name of TF in upper case')
 
     args = parser.parse_args()
 
     # Call the main function with the parsed arguments
-    main(args.biomart_indir,args.tf)
+    main(#args.fimo_indir, #args.fimo_outdir, 
+         args.biomart_indir, #args.biomart_outdir, 
+         #args.chipseq_dir,
+         args.tf)
 
 
 

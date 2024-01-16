@@ -1,0 +1,6 @@
+Statistics for USF1 dataset
+ The chipseq filtered data is reduced by 48.22% from initial fimo results
+ The promoter/enhancer filtered data is reduced by 48.61% from initial fimo results
+We have 31208 negative sequences and 32997 positive sequences
+True positives are 51.39319367650494% of the dataset
+True negatives are 48.60680632349506% of the dataset

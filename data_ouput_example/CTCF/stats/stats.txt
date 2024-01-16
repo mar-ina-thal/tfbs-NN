@@ -1,0 +1,6 @@
+Statistics for CTCF dataset
+ The chipseq filtered data is reduced by 14.79% from initial fimo results
+ The promoter/enhancer filtered data is reduced by 52.31% from initial fimo results
+We have 36930 negative sequences and 59564 positive sequences
+True positives are 61.72819035380438% of the dataset
+True negatives are 38.27180964619562% of the dataset

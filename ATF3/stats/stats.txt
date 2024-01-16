@@ -1,3 +1,0 @@
- The chipseq filtered data is reduced by 20.59% from initial fimo results
- The promoter/enhancer filtered data is reduced by 20.72% from initial fimo results
-We have 6967 negative sequences and 26577 positive sequencesTrue positives are 79.23026472692582% of the datasetTrue negatives are 20.769735273074172% of the dataset

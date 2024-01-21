@@ -155,8 +155,8 @@ def main(biomart_indir, tf):
 
     # Creating the stats.txt
     content = f"{tf}"
-    content += f"The promoter/enhancer filtered data is reduced by {filtered_reduction:.2f}% from initial fimo results\n"
-    content += f"The chipseq filtered data is reduced by {chipseq_reduction:.2f}% from initial fimo results\n"
+    content += f"The promoter/enhancer filtered data is thr {filtered_reduction:.2f}% from initial fimo results\n"
+    content += f"The chipseq filtered data is the {chipseq_reduction:.2f}% from initial fimo results\n"
     
     stats_dir = os.path.join(home_dir, f"filtered_fimo/{tf}/stats")
     os.makedirs(stats_dir, exist_ok=True)

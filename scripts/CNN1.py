@@ -50,15 +50,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 device
 
 
-# In[10]:
-
-
 torch.set_num_threads(10)
-
-
-
-
-
 
 
 # Parse command-line arguments
@@ -83,6 +75,7 @@ lengths= [len(item) for item in df['data']]
 print(f'Max length:{max(lengths)}, Min length: {min(lengths)}')
 
 
+"""
 # # Sequence length inspection and normalization
 
 if max(lengths) == min(lengths):  
@@ -92,11 +85,12 @@ else:
     limit = 200
     cut_sequences = [seq[:limit] for seq in df['data']]
 
+"""
 
 # # Define X,y variables
 
 
-
+cut_sequences=df["data"]
 
 X=[one_hot_encode(sequence) for sequence in cut_sequences]
 X = torch.from_numpy(np.array(X)).type(torch.float)
@@ -168,6 +162,7 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+"""
 
   ### Construct a 1 and 2 layer CNN with Maxpooling and Dropout ###
 
@@ -197,7 +192,7 @@ class Conv1(nn.Module):
 
 
 
-
+"""
 
 
 
@@ -211,8 +206,9 @@ class Conv_v0(torch.nn.Module):
         self.maxpool = torch.nn.MaxPool1d(kernel_size=5)
         
         self.dropout = torch.nn.Dropout(p=0.5) 
-        self.fc = torch.nn.Linear(in_features=108, out_features=2)
-        #elf.sigmoid = torch.nn.Sigmoid()
+        #in_features = 108 for 200kb, 588 for 1kb, 1188 for 2kb
+        self.fc =  torch.nn.LazyLinear(out_features=2)
+        #self.sigmoid = torch.nn.Sigmoid() will not be used since its intergraded in BCEWithLogitsLoss()
 
     def forward(self, x):
         x= x.permute(0, 2, 1)
@@ -226,7 +222,7 @@ class Conv_v0(torch.nn.Module):
         #print("Size after reshaping:", x.size())
         x=self.dropout(x)
         x = self.fc(x)
-       #x = self.sigmoid(x)
+        #x = self.sigmoid(x)
         return x
 
 
@@ -272,7 +268,8 @@ set_seeds()
 model = Conv_v0()
 
 # define the CrossEntropyLoss with weights
-loss_fn = nn.BCEWithLogitsLoss(weight=weights)
+#loss_fn = nn.BCEWithLogitsLoss(weight=weights)
+loss_fn = nn.BCEWithLogitsLoss()
 
 # Define oprimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
@@ -305,7 +302,7 @@ results, model = engine.train_with_early_stopping(model=model,
 ##### Save model and results ######
 
 base_directory = os.path.expanduser("~")
-sub_directory = f"CNN_results/{tf}/CNN1"
+sub_directory = f"CNN_results_no_weighted/{tf}/CNN1"
 save_directory = os.path.join(base_directory, sub_directory)
 os.makedirs(save_directory, exist_ok=True)
 

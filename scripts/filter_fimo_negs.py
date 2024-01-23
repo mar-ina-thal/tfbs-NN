@@ -53,7 +53,7 @@ mapping_table = {
 def main(biomart_indir, tf):   
 
     # Define the length to be added to each side 
-    seq_length=100
+    seq_length=50
     
     print(tf)
     # Get the path to the user's home directory
@@ -100,7 +100,7 @@ def main(biomart_indir, tf):
     print("Ensembl negative filtered created")
     
     print("Running bedtools intersect with chipseq...")
-    intersect2= f"bedtools intersect -a {ensemble_dir}/ensemlb_filtered_fimo.bed -b {chipseq_dir} > {chipseq_out_dir}/chipseq_filtered.bed"
+    intersect2= f"bedtools intersect -a {ensemble_dir}/ensemlb_filtered_fimo.bed -b {chipseq_dir} -wb > {chipseq_out_dir}/chipseq_filtered.bed"
     os.system(intersect2)
     print("Chipseq filtered created")
     
@@ -135,7 +135,10 @@ def main(biomart_indir, tf):
     chipseq_filtered_fimo_path = f"{chipseq_out_dir}/chipseq_filtered.bed"
     chipseq_filtered_df = pd.read_csv(chipseq_filtered_fimo_path, sep='\t')
     chipseq_filtered_df.dropna(inplace=True)
-    chipseq_filtered_df.columns=columns
+    columns_chipseq=['Chromosome', 'Start', 'End', 'strand', 'score', 'name', 'Chromosome_chip',
+                    'Start_chip', 'End_chip', 'strand_chip', 'score_chip', '1' ,'2', '3', '4' , '5']
+    chipseq_filtered_df.columns=columns_chipseq
+    chipseq_filtered_df = chipseq_filtered_df.sort_values(by='score_chip', ascending=False)
     
 
     """
@@ -155,8 +158,8 @@ def main(biomart_indir, tf):
 
     # Creating the stats.txt
     content = f"{tf}"
-    content += f"The promoter/enhancer filtered data is thr {filtered_reduction:.2f}% from initial fimo results\n"
-    content += f"The chipseq filtered data is the {chipseq_reduction:.2f}% from initial fimo results\n"
+    content += f"The promoter/enhancer filtered data is the {filtered_reduction:.2f}% of the initial fimo results\n"
+    content += f"The chipseq filtered data is the {chipseq_reduction:.2f}% of the initial fimo results\n"
     
     stats_dir = os.path.join(home_dir, f"filtered_fimo/{tf}/stats")
     os.makedirs(stats_dir, exist_ok=True)
@@ -206,7 +209,7 @@ def main(biomart_indir, tf):
         middle=int(np.round(start+(end-start)/2))
         true_negatives.append(updated_fasta[chromosome][middle - seq_length : middle + seq_length].seq)
         
-    content+=f"We have {len(true_negatives)} negative sequences and {len(true_positives)} positive sequences"
+    content+=f"We have {len(true_negatives)} negative sequences and {len(true_positives)} positive sequences\n"
     content+=f"True positives are {len(true_positives)/(len(true_negatives)+len(true_positives))*100}% of the dataset\n"
     content+=f"True negatives are {len(true_negatives)/(len(true_negatives)+len(true_positives))*100}% of the dataset\n"
     with open(f'{stats_dir}/stats.txt', 'w') as file:
@@ -230,18 +233,73 @@ def main(biomart_indir, tf):
     # Create DataFrames for negative and positive sequences
     true_negatives_df = pd.DataFrame({'data': true_negatives, 'class': 0})
     true_positives_df= pd.DataFrame({'data': true_positives, 'class': 1})
-
+    
     # Concatenate both DataFrames into a single DataFrame
     combined_df = pd.concat([true_negatives_df, true_positives_df], ignore_index=True)
-    # Export the DataFrame to a CSV file
-    # Join the home directory path with the new directories
-     
-    dataset_dir = os.path.join(home_dir,f"filtered_fimo/{tf}/datasets")
-    os.makedirs(dataset_dir, exist_ok=True)
-    combined_df.to_csv(f'{dataset_dir}/data.csv', index=False)
+    #Check and correct class imbalance
     
 
- 
+    # Assuming you have true_negatives_df and true_positives_df
+    # (You can replace these with your actual DataFrames)
+
+    # Concatenate the dataframes
+    combined_df = pd.concat([true_negatives_df, true_positives_df])
+    # Initialize final_df to combined_df
+    final_df = combined_df.copy()
+
+
+    # Calculate the percentage of class 1 and class 0 in the dataset
+    class_1_percentage = (final_df['class'] == 1).mean() * 100
+    class_0_percentage = (final_df['class'] == 0).mean() * 100
+
+    print("Class 1 Percentage:", class_1_percentage)
+    print("Class 0 Percentage:", class_0_percentage)
+
+    # Check if the percentage of class 1 is greater than 60%
+    if class_1_percentage > 60:
+        # Select some of the first half rows of class 1
+        selected_rows = true_positives_df.head(len(true_negatives_df))
+
+        # Create the final dataframe by concatenating the selected rows with true_negatives_df
+        final_df = pd.concat([true_negatives_df, selected_rows])
+
+        print("Final DataFrame (Class 1 > 60%):")
+        print(final_df)
+
+    # Check if the percentage of class 0 is greater than 60%
+    elif class_0_percentage > 60:
+        # Select some of the first half rows of class 0
+        selected_rows = true_negatives_df.head(len(true_positives_df))
+
+        # Create the final dataframe by concatenating the selected rows with true_positives_df
+        final_df = pd.concat([true_positives_df, selected_rows])
+
+        print("Final DataFrame (Class 0 > 60%):")
+      
+
+
+
+           # Calculate the percentage of class 1 and class 0 in the dataset
+    class_1_percentage = (final_df['class'] == 1).mean() * 100
+    class_0_percentage = (final_df['class'] == 0).mean() * 100
+
+    print("Final Class 1 Percentage:", class_1_percentage)
+    print("Final Class 0 Percentage:", class_0_percentage)
+
+    content+= f"Final Positives Percentage:{class_1_percentage}\n"
+    content+= f"Final Negatives Percentage:{class_0_percentage}\n"
+    with open(f'{stats_dir}/stats.txt', 'w') as file:
+        file.write(content)
+
+    # Export the DataFrame to a CSV file
+    # Join the home directory path with the new directories
+
+    dataset_dir = os.path.join(home_dir,f"filtered_fimo/{tf}/datasets")
+    os.makedirs(dataset_dir, exist_ok=True)
+    final_df.to_csv(f'{dataset_dir}/data.csv', index=False)
+
+
+
     
 
 
@@ -270,14 +328,7 @@ if __name__ == "__main__":
    
 
 
-    
-    
-    
-    
-    
 
-
-# In[ ]:
 
 
 

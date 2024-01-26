@@ -31,6 +31,7 @@ from torch import nn
 import torch.nn.functional as F
 
 import engine
+import engine_boosted
 import helper_functions
 from helper_functions import set_seeds
 
@@ -319,7 +320,7 @@ y_logits
 # # Results of 1 layer CNN
 
 
-results, model = engine.train_with_early_stopping(model=model,
+results, model = engine_boosted.train_with_early_stopping(model=model,
                                                   train_dataloader=train_loader,
                                                   valid_dataloader=val_loader,
                                                   optimizer=optimizer,
@@ -363,61 +364,17 @@ print(f"Best model and results saved to: {save_directory}")
 
 
 helper_functions.plot_loss_curves(results)
-
-plt.savefig(f"{save_directory}/{tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png")
+plt.savefig(f"{save_directory}/LOSS_AUC{tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png")
 plt.title(f"Loss Curves {tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png")
 
 
+helper_functions.plot_auroc(results)
+plt.savefig(f"{save_directory}/AUROC{tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png")
+plt.title(f"AUROC {tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png")
 
-
-
-# In[ ]:
-
-
-"""
-CTCF	15, 19 (TF has several motif variants), 54
-EP300	
-JUN	14
-NR3C1	15
-TEAD4	8
-ZNF274	12
-USF2	10
-TCF12	7
-SRF	16
-NRF1	11
-MAZ	8
-HES2	9
-FOS	8
-Cebpa	10
-FOXA1	8
-USF1	10
-RELA/p65	10
-GABPA	10
-ELF1	9
-EGR1	10
-ATF3	10
-ZBTB33	10
-SP1	9
-CREB1	8
-BCL3	
-YY1	12
-JUND	11
-FOSL2	10
-MAX	6
-MYC	8
-CEBPB	10
-REST	20
-	
-"""
-
-
-# In[1]:
-
-
-
-
-
-# In[ ]:
+helper_functions.plot_f_score(results)
+plt.savefig(f"{save_directory}/F1_SCORE{tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png");
+plt.title(f"F1-score{tf}_CNN1_ADAM_BCEWithLogits_seq=200b.png")
 
 
 

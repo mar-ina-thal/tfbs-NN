@@ -7,6 +7,11 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
+
+
 from torch import nn
 
 import os
@@ -165,6 +170,51 @@ def plot_loss_curves(results):
     plt.xlabel("Epochs")
     plt.legend()
 
+def plot_auroc(results):
+    """Plots training curves of a results dictionary.
+
+    Args:
+        results (dict): dictionary containing list of values, e.g.
+            {"train_loss": [...],
+             "train_acc": [...],
+             "test_loss": [...],
+             "test_acc": [...]}
+    """
+    train_auroc = results["train_auroc"]
+    valid_auroc = results["valid_auroc"]
+
+
+    epochs = range(len(results["valid_auroc"]))
+
+    #plt.figure(figsize=(15, 7))
+
+    # Plot auroc
+    plt.plot(epochs, train_auroc, label="train_auroc")
+    plt.plot(epochs, valid_auroc, label="valid_auroc")
+    plt.title("AUROC")
+    plt.xlabel("Epochs")
+    plt.legend()
+
+def plot_f_score(results):
+    """Plots training curves of a results dictionary.
+
+    
+    """
+    train_f_score = results["train_f_score"]
+    valid_f_score = results["valid_f_score"]
+
+
+    epochs = range(len(results["valid_f_score"]))
+
+    #plt.figure(figsize=(15, 7))
+
+    # Plot f_score
+    plt.plot(epochs, train_f_score , label="train_f_score")
+    plt.plot(epochs, valid_f_score, label="valid_f_score")
+    plt.title("Score")
+    plt.xlabel("Epochs")
+    plt.legend()
+
 
 # Pred and plot image function from notebook 04
 # See creation: https://www.learnpytorch.io/04_pytorch_custom_datasets/#113-putting-custom-image-prediction-together-building-a-function
@@ -296,3 +346,105 @@ def download_data(source: str,
             os.remove(data_path / target_file)
 
     return image_path
+
+
+def make_loaders(X: torch.tensor,
+                 y: torch.tensor,
+                 device: torch.device = "cuda" if torch.cuda.is_available() else "cpu"):
+    
+    # Split the data into a stratified hold-out validation set and the rest
+    stratified_splitter = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+
+    for train_val_index, test_index in stratified_splitter.split(X, y):
+        X_train_val, X_test = X[train_val_index], X[test_index]
+        y_train_val, y_test = y[train_val_index], y[test_index]
+
+    # Split the remaining data into training and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.2, stratify=y_train_val, random_state=42)
+
+    # Expand the dimensions of y to make it 2-dimensional
+    y_train = y_train.view(-1, 1)
+    y_test = y_test.view(-1, 1)
+    y_val = y_val.view(-1, 1)
+
+    # Concatenate the complement of y to create a 2-dimensional tensor
+    y_train_one_hot = torch.cat([1 - y_train, y_train], dim=1).float()
+    y_test_one_hot = torch.cat([1 - y_test, y_test], dim=1).float()
+    y_val_one_hot = torch.cat([1 - y_val, y_val], dim=1).float()
+
+    # Move tensors to the same device
+    X_train, y_train_one_hot, y_train = X_train.to(device), y_train_one_hot.to(device), y_train.to(device)
+    X_val, y_val_one_hot, y_val = X_val.to(device), y_val_one_hot.to(device), y_val.to(device)
+    X_test, y_test_one_hot, y_test = X_test.to(device), y_test_one_hot.to(device), y_test.to(device)
+
+    # Create datasets
+    train_dataset = TensorDataset(X_train, y_train_one_hot, y_train)
+    val_dataset = TensorDataset(X_val, y_val_one_hot, y_val)
+    test_dataset = TensorDataset(X_test, y_test_one_hot, y_test)
+
+    # Convert to PyTorch DataLoader
+    batch_size = 64
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    
+    return train_loader, val_loader, test_loader
+
+def make_2loaders(X: torch.tensor,
+                 y: torch.tensor,
+                 device: torch.device = "cuda" if torch.cuda.is_available() else "cpu"):
+    
+    # Split the data into a train and test set
+    stratified_splitter = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+
+    for train_index, test_index in stratified_splitter.split(X, y):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+    # Expand the dimensions of y to make it 2-dimensional
+    y_train = y_train.view(-1, 1)
+    y_test = y_test.view(-1, 1)
+
+    # Concatenate the complement of y to create a 2-dimensional tensor
+    y_train_one_hot = torch.cat([1 - y_train, y_train], dim=1).float()
+    y_test_one_hot = torch.cat([1 - y_test, y_test], dim=1).float()
+
+    # Move tensors to the same device
+    X_train, y_train_one_hot, y_train = X_train.to(device), y_train_one_hot.to(device), y_train.to(device)
+    X_test, y_test_one_hot, y_test = X_test.to(device), y_test_one_hot.to(device), y_test.to(device)
+
+    # Create datasets
+    train_dataset = TensorDataset(X_train, y_train_one_hot, y_train)
+    test_dataset = TensorDataset(X_test, y_test_one_hot, y_test)
+
+    # Convert to PyTorch DataLoader
+    batch_size = 64
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    
+    return train_loader, test_loader
+
+def make_loader(X_test: torch.tensor,
+                 y_test: torch.tensor,
+                 device: torch.device = "cuda" if torch.cuda.is_available() else "cpu"):
+    
+ 
+
+
+    y_test = y_test.view(-1, 1)
+
+    # Concatenate the complement of y to create a 2-dimensional tensor
+    y_test_one_hot = torch.cat([1 - y_test, y_test], dim=1).float()
+
+    # Move tensors to the same device
+    X_test, y_test_one_hot, y_test = X_test.to(device), y_test_one_hot.to(device), y_test.to(device)
+
+    # Create datasets
+    test_dataset = TensorDataset(X_test, y_test_one_hot, y_test)
+
+    # Convert to PyTorch DataLoader
+    batch_size = 64
+    
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    
+    return  test_loader

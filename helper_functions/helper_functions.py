@@ -16,6 +16,7 @@ from torch import nn
 
 import os
 import zipfile
+import csv
 
 from pathlib import Path
 
@@ -378,12 +379,14 @@ def make_loaders(X: torch.tensor,
     X_test, y_test_one_hot, y_test = X_test.to(device), y_test_one_hot.to(device), y_test.to(device)
 
     # Create datasets
+    set_seeds()
     train_dataset = TensorDataset(X_train, y_train_one_hot, y_train)
     val_dataset = TensorDataset(X_val, y_val_one_hot, y_val)
     test_dataset = TensorDataset(X_test, y_test_one_hot, y_test)
 
     # Convert to PyTorch DataLoader
-    batch_size = 64
+    batch_size = 128
+    set_seeds()
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
@@ -413,10 +416,12 @@ def make_2loaders(X: torch.tensor,
     X_train, y_train_one_hot, y_train = X_train.to(device), y_train_one_hot.to(device), y_train.to(device)
     X_test, y_test_one_hot, y_test = X_test.to(device), y_test_one_hot.to(device), y_test.to(device)
 
+    set_seeds()
     # Create datasets
     train_dataset = TensorDataset(X_train, y_train_one_hot, y_train)
     test_dataset = TensorDataset(X_test, y_test_one_hot, y_test)
-
+    
+    set_seeds()
     # Convert to PyTorch DataLoader
     batch_size = 64
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -440,11 +445,32 @@ def make_loader(X_test: torch.tensor,
     X_test, y_test_one_hot, y_test = X_test.to(device), y_test_one_hot.to(device), y_test.to(device)
 
     # Create datasets
+    set_seeds()
     test_dataset = TensorDataset(X_test, y_test_one_hot, y_test)
 
     # Convert to PyTorch DataLoader
     batch_size = 64
-    
+    set_seeds()    
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
     
     return  test_loader
+
+def save_results_to_csv(results, filepath):
+    fieldnames = ["Test Loss", "Test Bal Acc", "Test MCC", "Test F-Score", "Test AUROC", "Len Dataloader", "Test confusion matrix"]
+
+    with open(filepath, mode='w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+        # Write header
+        writer.writeheader()
+
+        # Write data
+        writer.writerow({
+            "Test Loss": results[0],
+            "Test Bal Acc": results[1],
+            "Test MCC": results[2],
+            "Test F-Score": results[3],
+            "Test AUROC": results[4],
+            "Len Dataloader" : results[5],
+            "Test confusion matrix": results[6]
+        })

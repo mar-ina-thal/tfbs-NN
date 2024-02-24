@@ -1,6 +1,0 @@
-Statistics for ZNF274 dataset
- The chipseq filtered data is reduced by 91.01% from initial fimo results
- The promoter/enhancer filtered data is reduced by 94.41% from initial fimo results
-We have 33899 negative sequences and 3225 positive sequences
-True positives are 8.68710268290055% of the dataset
-True negatives are 91.31289731709946% of the dataset

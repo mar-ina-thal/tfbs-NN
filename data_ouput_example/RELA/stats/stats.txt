@@ -1,6 +1,0 @@
-Statistics for RELA dataset
- The chipseq filtered data is reduced by 40.04% from initial fimo results
- The promoter/enhancer filtered data is reduced by 42.22% from initial fimo results
-We have 23250 negative sequences and 32837 positive sequences
-True positives are 58.546543762369176% of the dataset
-True negatives are 41.453456237630824% of the dataset
